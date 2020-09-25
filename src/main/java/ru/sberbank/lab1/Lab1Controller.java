@@ -14,19 +14,23 @@ import org.springframework.web.client.RestTemplate;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 
 import static java.util.Collections.emptyList;
+import static java.util.Collections.sort;
 
 @RestController
 @RequestMapping("/lab1")
 public class Lab1Controller {
+    ConcurrentHashMap<LocalDate, Double> hashTemp = new ConcurrentHashMap<>();
 
     private static final String URL = "http://export.rbc.ru/free/selt.0/free.fcgi?period=DAILY&tickers=USD000000TOD&separator=TAB&data_format=BROWSER";
 
@@ -122,16 +126,33 @@ public class Lab1Controller {
 
     public List<Double> getTemperatureForLastDays(int days) throws JSONException {
         List<Double> temps = new ArrayList<>();
-
+        LocalDate date = LocalDate.now();//вынес создание переменные из цикла
+        Long oneDayInSec = 24 * 60 * 60L;
+        Long currentDayInSec = Calendar.getInstance().getTimeInMillis() / 1000;
+        String curDate;
+        Double curTemp;
         for (int i = 0; i < days; i++) {
-            Long currentDayInSec = Calendar.getInstance().getTimeInMillis() / 1000;
-            Long oneDayInSec = 24 * 60 * 60L;
-            Long curDateSec = currentDayInSec - i * oneDayInSec;
-            Double curTemp = getTemperatureFromInfo(curDateSec.toString());
+            date = date.minusDays(1);
+            currentDayInSec = currentDayInSec - oneDayInSec;
+            curDate = currentDayInSec.toString();
+            if (hashTemp.get(date)!=null){//добавил хэширование, чтобы каждый раз не обращаться за одними и теми же данными
+                curTemp = hashTemp.get(date);
+            }else {
+                curTemp = getTemperatureFromInfo(curDate);
+                hashTemp.put(date,curTemp);
+            }
             temps.add(curTemp);
         }
-
         return temps;
+    }
+
+    public Double getTemperatureFromInfoImitation(String date){
+        try {
+            Thread.sleep(500);
+        }catch (Exception e){
+            System.out.println(e.getMessage());
+        }
+        return 45.5;
     }
 
     public String getTodayWeather(String date) {
