@@ -114,10 +114,9 @@ public class Lab1Controller {
 
     public List<Double> getTemperatureForLastDays(int days) throws JSONException {
         List<Double> temps = new ArrayList<>();
-
+        long currentDayInSec = Calendar.getInstance().getTimeInMillis() / 1000; // достал из цикла так как используется 1 раз за вызов
+        long oneDayInSec = 86400L; ///заменил на число чтобы каждый раз не вычислять
         for (int i = 0; i < days; i++) {
-            Long currentDayInSec = Calendar.getInstance().getTimeInMillis() / 1000;
-            Long oneDayInSec = 86400L; ///заменил на число чтобы каждый раз не вычислять
             Long curDateSec = currentDayInSec - i * oneDayInSec;
             Double curTemp = todayWeatherProxy.getTempForDay(curDateSec);
             temps.add(curTemp);
