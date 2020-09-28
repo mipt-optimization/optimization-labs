@@ -112,40 +112,41 @@ public class Lab1Controller {
 
     @GetMapping("/weather")
     public List<Double> getWeatherForPeriod(Integer days) {
-        try {
-            return getTemperatureForLastDays(days);
-        } catch (JSONException e) {
-        }
-
-        return emptyList();
-    }
-
-    public List<Double> getTemperatureForLastDays(int days) throws JSONException {
         List<Double> temps = new ArrayList<>();
-
+        //changed time to be a constant during the day for fine hashing
+        long dayLength = 3600 * 24;
+        long renewalSecond = 8 * 3600;
+        long currentSecond = Calendar.getInstance().getTimeInMillis() / 1000;
+        long alignedSecond = currentSecond - (currentSecond % dayLength) + renewalSecond;
         for (int i = 0; i < days; i++) {
-            Long currentDayInSec = Calendar.getInstance().getTimeInMillis() / 1000;
-            Long oneDayInSec = 24 * 60 * 60L;
-            Long curDateSec = currentDayInSec - i * oneDayInSec;
-            Double curTemp = getTemperatureFromInfo(curDateSec.toString());
+            double curTemp = getTemperatureFromInfo(alignedSecond - i * dayLength);
             temps.add(curTemp);
         }
-
         return temps;
     }
 
-    public String getTodayWeather(String date) {
-        String obligatoryForecastStart = "https://api.darksky.net/forecast/ac1830efeff59c748d212052f27d49aa/";
+    private String getTodayWeather(String date){
+        String obligatoryForecastStart = "https://api.darksky.net/forecast/0fa2b427096b8237f2388f62e847684d/";
         String LAcoordinates = "34.053044,-118.243750,";
         String exclude = "exclude=daily";
 
         RestTemplate restTemplate = new RestTemplate();
         String fooResourceUrl = obligatoryForecastStart + LAcoordinates + date + "?" + exclude;
         System.out.println(fooResourceUrl);
-        ResponseEntity<String> response = restTemplate.getForEntity(fooResourceUrl, String.class);
-        String info = response.getBody();
-        System.out.println(info);
-        return info;
+        return restTemplate.getForEntity(fooResourceUrl, String.class).getBody();
+    }
+
+    //hashed request
+    private HashMap<Long, Double> temperatureHash = new HashMap<>();
+    private double getTemperatureFromInfo(long date)  {
+        Double temperature = temperatureHash.get(date);
+        if(temperature == null) {
+            String info = getTodayWeather(Long.toString(date));
+            temperature = getTemperature(info);
+            temperatureHash.put(date, temperature);
+        }
+
+        return temperature;
     }
 
     public Double getTemperatureFromInfo(String date) throws JSONException {
