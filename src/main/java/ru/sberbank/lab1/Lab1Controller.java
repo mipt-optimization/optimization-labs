@@ -5,6 +5,7 @@ import org.asynchttpclient.Response;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -111,6 +112,7 @@ public class Lab1Controller {
         return quotes;
     }
 
+    @Cacheable
     @GetMapping("/weather")
     public List<Double> getWeatherForPeriod(Integer days) {
         try {
