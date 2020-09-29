@@ -138,10 +138,11 @@ public class Lab1Controller {
         long oneDayInSec;
         long curDateSec;
         double curTemp;
+        currentDayInSec = Calendar.getInstance().getTimeInMillis() / 1000;
+        oneDayInSec = 24 * 60 * 60L;
 
         for (int i = temp.size(); i < days; i++) {
-            currentDayInSec = Calendar.getInstance().getTimeInMillis() / 1000;
-            oneDayInSec = 24 * 60 * 60L;
+
             curDateSec = currentDayInSec - i * oneDayInSec;
             curTemp = getTemperatureFromInfo(Long.toString(curDateSec));
             temps.add(curTemp);
