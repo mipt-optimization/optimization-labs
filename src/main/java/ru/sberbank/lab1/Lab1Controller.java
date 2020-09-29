@@ -144,7 +144,6 @@ public class Lab1Controller {
         oneDayInSec = 24 * 60 * 60L;
 
         for (int i = temp.size(); i < days; i++) {
-
             curDateSec = currentDayInSec - i * oneDayInSec;
             curTemp = getTemperatureFromInfo(Long.toString(curDateSec));
             temps.add(curTemp);
