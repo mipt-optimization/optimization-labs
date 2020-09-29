@@ -5,9 +5,6 @@ import org.asynchttpclient.Response;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -114,7 +111,6 @@ public class Lab1Controller {
         return quotes;
     }
 
-    @Cacheable("days")
     @GetMapping("/weather")
     public List<Double> getWeatherForPeriod(Integer days) {
         try {
@@ -129,7 +125,7 @@ public class Lab1Controller {
         List<Double> temps = new ArrayList<>();
         int j = 0;
         if (temp.size() > 0) {
-            for (Double temperature : temp) {
+            for (double temperature : temp) {
                 if (j >= days) {
                     break;
                 }
@@ -138,11 +134,16 @@ public class Lab1Controller {
             }
         }
 
+        long currentDayInSec;
+        long oneDayInSec;
+        long curDateSec;
+        double curTemp;
+
         for (int i = temp.size(); i < days; i++) {
-            Long currentDayInSec = Calendar.getInstance().getTimeInMillis() / 1000;
-            Long oneDayInSec = 24 * 60 * 60L;
-            Long curDateSec = currentDayInSec - i * oneDayInSec;
-            Double curTemp = getTemperatureFromInfo(curDateSec.toString());
+            currentDayInSec = Calendar.getInstance().getTimeInMillis() / 1000;
+            oneDayInSec = 24 * 60 * 60L;
+            curDateSec = currentDayInSec - i * oneDayInSec;
+            curTemp = getTemperatureFromInfo(Long.toString(curDateSec));
             temps.add(curTemp);
             temp.add(curTemp);
         }
@@ -151,7 +152,7 @@ public class Lab1Controller {
     }
 
     public String getTodayWeather(String date) {
-        String obligatoryForecastStart = "https://api.darksky.net/forecast/ac1830efeff59c748d212052f27d49aa/";
+        String obligatoryForecastStart = "https://api.darksky.net/forecast/3ce5ca6c6c64befaa69dd9cf05b939db/";
         String LAcoordinates = "34.053044,-118.243750,";
         String exclude = "exclude=daily";
 
