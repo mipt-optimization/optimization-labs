@@ -30,6 +30,9 @@ public class Lab1Controller {
 
     private static final String URL = "http://export.rbc.ru/free/selt.0/free.fcgi?period=DAILY&tickers=USD000000TOD&separator=TAB&data_format=BROWSER";
 
+    private final Map<Integer, Double> hmTempTemperature = new HashMap<>();
+
+
     @GetMapping("/quotes")
     public List<Quote> quotes(@RequestParam("days") int days) throws ExecutionException, InterruptedException, ParseException {
         AsyncHttpClient client = AsyncHttpClientFactory.create(new AsyncHttpClientFactory.AsyncHttpClientConfig());
@@ -123,19 +126,27 @@ public class Lab1Controller {
     public List<Double> getTemperatureForLastDays(int days) throws JSONException {
         List<Double> temps = new ArrayList<>();
 
+        //Вынес константы из цикла
+        Long currentDayInSec = Calendar.getInstance().getTimeInMillis() / 1000;
+        Long oneDayInSec = 24 * 60 * 60L;
+
         for (int i = 0; i < days; i++) {
-            Long currentDayInSec = Calendar.getInstance().getTimeInMillis() / 1000;
-            Long oneDayInSec = 24 * 60 * 60L;
             Long curDateSec = currentDayInSec - i * oneDayInSec;
-            Double curTemp = getTemperatureFromInfo(curDateSec.toString());
-            temps.add(curTemp);
+
+            if (!hmTempTemperature.containsKey(i)) {
+                Double curTemp = getTemperatureFromInfo(curDateSec.toString());
+
+                hmTempTemperature.put(i, curTemp);
+            }
+
+            temps.add(hmTempTemperature.get(i));
         }
 
         return temps;
     }
 
     public String getTodayWeather(String date) {
-        String obligatoryForecastStart = "https://api.darksky.net/forecast/ac1830efeff59c748d212052f27d49aa/";
+        String obligatoryForecastStart = "https://api.darksky.net/forecast/7ba6164198e89cb2e6b2454d90e7b41d/";
         String LAcoordinates = "34.053044,-118.243750,";
         String exclude = "exclude=daily";
 
