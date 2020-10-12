@@ -28,6 +28,7 @@ import static java.util.Collections.emptyList;
 @RequestMapping("/lab1")
 public class Lab1Controller {
 
+    private final Map<Integer,Double> temperatureCash = new HashMap();
     private static final String URL = "http://export.rbc.ru/free/selt.0/free.fcgi?period=DAILY&tickers=USD000000TOD&separator=TAB&data_format=BROWSER";
 
     @GetMapping("/quotes")
@@ -123,19 +124,35 @@ public class Lab1Controller {
     public List<Double> getTemperatureForLastDays(int days) throws JSONException {
         List<Double> temps = new ArrayList<>();
 
+        //вынес чтобы постоянно не объявлять
+        Long currentDayInSec = Calendar.getInstance().getTimeInMillis() / 1000;
+        Long oneDayInSec = 24 * 60 * 60L;
+
         for (int i = 0; i < days; i++) {
-            Long currentDayInSec = Calendar.getInstance().getTimeInMillis() / 1000;
-            Long oneDayInSec = 24 * 60 * 60L;
-            Long curDateSec = currentDayInSec - i * oneDayInSec;
-            Double curTemp = getTemperatureFromInfo(curDateSec.toString());
-            temps.add(curTemp);
+
+//            старая реализация
+//            Long currentDayInSec = Calendar.getInstance().getTimeInMillis() / 1000;
+//            Long oneDayInSec = 24 * 60 * 60L;
+//            Long curDateSec = currentDayInSec - i * oneDayInSec;
+//            Double curTemp = getTemperatureFromInfo(curDateSec.toString());
+//            temps.add(curTemp);
+
+//            новая реализация
+            if(temperatureCash.containsKey(i)){
+                temps.add(temperatureCash.get(i));
+            }else {
+                Long curDateSec = currentDayInSec - i * oneDayInSec;
+                Double curTemp = getTemperatureFromInfo(curDateSec.toString());
+                temps.add(curTemp);
+                temperatureCash.put(i, curTemp);
+            }
         }
 
         return temps;
     }
 
     public String getTodayWeather(String date) {
-        String obligatoryForecastStart = "https://api.darksky.net/forecast/ac1830efeff59c748d212052f27d49aa/";
+        String obligatoryForecastStart = "https://api.darksky.net/forecast/7680422f32effb534f62f1283f0c38be/";
         String LAcoordinates = "34.053044,-118.243750,";
         String exclude = "exclude=daily";
 
