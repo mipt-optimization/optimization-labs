@@ -14,12 +14,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 
 import static java.util.Collections.emptyList;
@@ -29,6 +24,7 @@ import static java.util.Collections.emptyList;
 public class Lab1Controller {
 
     private static final String URL = "http://export.rbc.ru/free/selt.0/free.fcgi?period=DAILY&tickers=USD000000TOD&separator=TAB&data_format=BROWSER";
+    private final Map<Integer, Double> prevTemperatureCalc = new HashMap<>();
 
     @GetMapping("/quotes")
     public List<Quote> quotes(@RequestParam("days") int days) throws ExecutionException, InterruptedException, ParseException {
@@ -123,12 +119,21 @@ public class Lab1Controller {
     public List<Double> getTemperatureForLastDays(int days) throws JSONException {
         List<Double> temps = new ArrayList<>();
 
-        for (int i = 0; i < days; i++) {
-            Long currentDayInSec = Calendar.getInstance().getTimeInMillis() / 1000;
-            Long oneDayInSec = 24 * 60 * 60L;
-            Long curDateSec = currentDayInSec - i * oneDayInSec;
-            Double curTemp = getTemperatureFromInfo(curDateSec.toString());
-            temps.add(curTemp);
+        // Константы, которые можно вынести из цикла.
+        long currentDayInSec = Calendar.getInstance().getTimeInMillis() / 1000;
+        long oneDayInSec = 24 * 60 * 60L;
+
+        for (int dayNumber = 0; dayNumber < days; dayNumber++) {
+            // Если данные за i-ый день существуют, то возвращаем их.
+            // Уменьшаем количество нецелесообразных расчетов.
+            if (!prevTemperatureCalc.containsKey(dayNumber)) {
+                long curDateSec = currentDayInSec - dayNumber * oneDayInSec;
+                Double curTemp = getTemperatureFromInfo(Long.toString(curDateSec));
+                prevTemperatureCalc.put(dayNumber, curTemp);
+                temps.add(curTemp);
+            } else {
+                temps.add(prevTemperatureCalc.get(dayNumber));
+            }
         }
 
         return temps;
@@ -150,17 +155,16 @@ public class Lab1Controller {
 
     public Double getTemperatureFromInfo(String date) throws JSONException {
         String info = getTodayWeather(date);
-        Double curTemp = getTemperature(info);
-        return curTemp;
+        // Нет необходимости инициализировать переменную, которая выполняет return следующим шагом.
+        return getTemperature(info);
     }
 
     public Double getTemperature(String info) throws JSONException {
         JSONObject json = new JSONObject(info);
         String hourly = json.getString("hourly");
         JSONArray data = new JSONObject(hourly).getJSONArray("data");
-        Double temp = new JSONObject(data.get(0).toString()).getDouble("temperature");
-
-        return temp;
+        // Нет необходимости инициализировать переменную, которая выполняет return следующим шагом.
+        return new JSONObject(data.get(0).toString()).getDouble("temperature");
     }
 }
 
