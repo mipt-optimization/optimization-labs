@@ -2,10 +2,8 @@ package ru.sberbank.lab1;
 
 import org.asynchttpclient.AsyncHttpClient;
 import org.asynchttpclient.Response;
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -20,15 +18,23 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 
 import static java.util.Collections.emptyList;
+
 
 @RestController
 @RequestMapping("/lab1")
 public class Lab1Controller {
 
+
+    ConcurrentHashMap<String, Double> cache = new ConcurrentHashMap<>();
     private static final String URL = "http://export.rbc.ru/free/selt.0/free.fcgi?period=DAILY&tickers=USD000000TOD&separator=TAB&data_format=BROWSER";
+    private static final Long ONE_DAY_IN_SEC = 86400L;
+    private static final String OBLIGATORY_FORECAST_START = "https://api.darksky.net/forecast/ac1830efeff59c748d212052f27d49aa/";
+    private static final String LA_ACOORDINATES = "34.053044,-118.243750,";
+    private static final String EXCLUDE = "exclude=daily";
 
     @GetMapping("/quotes")
     public List<Quote> quotes(@RequestParam("days") int days) throws ExecutionException, InterruptedException, ParseException {
@@ -113,54 +119,61 @@ public class Lab1Controller {
     @GetMapping("/weather")
     public List<Double> getWeatherForPeriod(Integer days) {
         try {
-            return getTemperatureForLastDays(days);
+            Long currentDayInSec = Calendar.getInstance().getTimeInMillis() / 1000;
+            long currentDay = currentDayInSec / ONE_DAY_IN_SEC; // лучше использовать примитивы
+            Double curTemp;
+            // заинлайнили метод getTemperatureForLastDays, он больше нигде не используется(будем считать, что и не будет, можно избавиться от него
+            //хотя конечно по-хорошему лучше делать не внутри rest метода, а чтобы сервис какой то этим занимался
+            List<Double> temps = new ArrayList<>();
+            // вынесли константы из цикла, их не нужно каждый раз заново высчитывать. oneDayInSec и вовсе вынесли из метода как константу статическую в классе,
+            //избавались от ввода некоторых бессмысленных локальных временных переменных
+            for (int i = 0; i < days; i++) {
+                curTemp = cache.get(Long.toString(currentDay)); //используем String для ключа как один из самых оптимальных вариантов в java
+                if (curTemp != null) { //хэшируем значения, чтобы не высчитывать их каждый раз заново
+                    temps.add(curTemp);
+                }
+                else {
+                    curTemp = getTemperature(getTodayWeather((currentDayInSec).toString()));
+                    temps.add(curTemp);
+                    cache.put(Long.toString(currentDay), curTemp);
+                }
+                currentDayInSec -= ONE_DAY_IN_SEC;
+                currentDay = currentDayInSec / ONE_DAY_IN_SEC;
+            }
+
+            return temps;
         } catch (JSONException e) {
         }
 
         return emptyList();
     }
 
-    public List<Double> getTemperatureForLastDays(int days) throws JSONException {
-        List<Double> temps = new ArrayList<>();
-
-        for (int i = 0; i < days; i++) {
-            Long currentDayInSec = Calendar.getInstance().getTimeInMillis() / 1000;
-            Long oneDayInSec = 24 * 60 * 60L;
-            Long curDateSec = currentDayInSec - i * oneDayInSec;
-            Double curTemp = getTemperatureFromInfo(curDateSec.toString());
-            temps.add(curTemp);
-        }
-
-        return temps;
-    }
 
     public String getTodayWeather(String date) {
-        String obligatoryForecastStart = "https://api.darksky.net/forecast/ac1830efeff59c748d212052f27d49aa/";
-        String LAcoordinates = "34.053044,-118.243750,";
-        String exclude = "exclude=daily";
-
-        RestTemplate restTemplate = new RestTemplate();
-        String fooResourceUrl = obligatoryForecastStart + LAcoordinates + date + "?" + exclude;
+        // вынесли константы и убрали ненужную временную локальную переменную restTemplate
+        // используем StringBuilder для более быстрой контакенации строк
+        StringBuilder fooResourceUrl = new StringBuilder()
+                .append(OBLIGATORY_FORECAST_START)
+                .append(LA_ACOORDINATES)
+                .append(date)
+                .append("?")
+                .append(EXCLUDE);
         System.out.println(fooResourceUrl);
-        ResponseEntity<String> response = restTemplate.getForEntity(fooResourceUrl, String.class);
-        String info = response.getBody();
-        System.out.println(info);
-        return info;
-    }
-
-    public Double getTemperatureFromInfo(String date) throws JSONException {
-        String info = getTodayWeather(date);
-        Double curTemp = getTemperature(info);
-        return curTemp;
+        String body = new RestTemplate().getForEntity(fooResourceUrl.toString(), String.class).getBody();
+        //убрали ненужные временные локальные переменные
+        System.out.println(body);
+        return body;
     }
 
     public Double getTemperature(String info) throws JSONException {
-        JSONObject json = new JSONObject(info);
-        String hourly = json.getString("hourly");
-        JSONArray data = new JSONObject(hourly).getJSONArray("data");
-        Double temp = new JSONObject(data.get(0).toString()).getDouble("temperature");
+       // возможно это понимажает читаемость кода, но с точки зрения оптимизации, можно избавиться от лишних созданий локальный временных объектов
 
-        return temp;
+        return new JSONObject(new JSONObject(new JSONObject(info).getString("hourly"))
+                .getJSONArray("data")
+                .get(0)
+                .toString())
+
+                .getDouble("temperature");
     }
 }
 
