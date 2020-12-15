@@ -5,6 +5,7 @@ import org.asynchttpclient.Response;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -29,6 +30,7 @@ import static java.util.Collections.emptyList;
 public class Lab1Controller {
 
     private static final String URL = "http://export.rbc.ru/free/selt.0/free.fcgi?period=DAILY&tickers=USD000000TOD&separator=TAB&data_format=BROWSER";
+    private List<Double> temp = new ArrayList<>();
 
     @GetMapping("/quotes")
     public List<Quote> quotes(@RequestParam("days") int days) throws ExecutionException, InterruptedException, ParseException {
@@ -110,6 +112,7 @@ public class Lab1Controller {
         return quotes;
     }
 
+    @Cacheable
     @GetMapping("/weather")
     public List<Double> getWeatherForPeriod(Integer days) {
         try {
@@ -122,20 +125,36 @@ public class Lab1Controller {
 
     public List<Double> getTemperatureForLastDays(int days) throws JSONException {
         List<Double> temps = new ArrayList<>();
+        int j = 0;
+        if (temp.size() > 0) {
+            for (double temperature : temp) {
+                if (j >= days) {
+                    break;
+                }
+                temps.add(temperature);
+                j++;
+            }
+        }
 
-        for (int i = 0; i < days; i++) {
-            Long currentDayInSec = Calendar.getInstance().getTimeInMillis() / 1000;
-            Long oneDayInSec = 24 * 60 * 60L;
-            Long curDateSec = currentDayInSec - i * oneDayInSec;
-            Double curTemp = getTemperatureFromInfo(curDateSec.toString());
+        long currentDayInSec;
+        long oneDayInSec;
+        long curDateSec;
+        double curTemp;
+        currentDayInSec = Calendar.getInstance().getTimeInMillis() / 1000;
+        oneDayInSec = 24 * 60 * 60L;
+
+        for (int i = temp.size(); i < days; i++) {
+            curDateSec = currentDayInSec - i * oneDayInSec;
+            curTemp = getTemperatureFromInfo(Long.toString(curDateSec));
             temps.add(curTemp);
+            temp.add(curTemp);
         }
 
         return temps;
     }
 
     public String getTodayWeather(String date) {
-        String obligatoryForecastStart = "https://api.darksky.net/forecast/ac1830efeff59c748d212052f27d49aa/";
+        String obligatoryForecastStart = "https://api.darksky.net/forecast/3ce5ca6c6c64befaa69dd9cf05b939db/";
         String LAcoordinates = "34.053044,-118.243750,";
         String exclude = "exclude=daily";
 
