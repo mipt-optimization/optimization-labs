@@ -1,5 +1,6 @@
-package ru.sberbank;
+package ru.sberbank.utils;
 
+import java.time.ZonedDateTime;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -13,6 +14,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.lang.String.format;
+import static java.time.LocalDateTime.now;
+import static java.time.ZoneId.systemDefault;
 import static java.util.Collections.emptyMap;
 import static java.util.stream.Collectors.toList;
 
@@ -20,6 +23,14 @@ public final class Utils {
 
     private Utils() {
 
+    }
+
+    public static ZonedDateTime getZonedDateTimeAtStartOfHour() {
+        return now()
+                .withSecond(0)
+                .withMinute(0)
+                .withNano(0)
+                .atZone(systemDefault());
     }
 
     public static <T> T firstValueOrNull(Collection<T> values) {
@@ -70,6 +81,6 @@ public final class Utils {
         if (isEmpty(sourceMap)) return emptyMap();
         return toEntryStream(sourceMap).collect(toLinkedMap(
                 e -> keyConverter.apply(e.getKey(), e.getValue()),
-                e -> valueConverter.apply(e.getKey(), e.getValue()) ));
+                e -> valueConverter.apply(e.getKey(), e.getValue())));
     }
 }

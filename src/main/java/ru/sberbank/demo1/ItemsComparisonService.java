@@ -4,20 +4,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Stream.concat;
-import static ru.sberbank.Utils.applyOrNull;
-import static ru.sberbank.Utils.filter;
-import static ru.sberbank.Utils.reMap;
+import static ru.sberbank.utils.Utils.*;
 
 @Service
 public class ItemsComparisonService {
