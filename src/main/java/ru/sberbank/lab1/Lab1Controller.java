@@ -30,6 +30,9 @@ public class Lab1Controller {
 
     private static final String URL = "http://export.rbc.ru/free/selt.0/free.fcgi?period=DAILY&tickers=USD000000TOD&separator=TAB&data_format=BROWSER";
 
+    // create cache
+    private final HashMap<String, Double> temperatureCache = new HashMap<>();
+
     @GetMapping("/quotes")
     public List<Quote> quotes(@RequestParam("days") int days) throws ExecutionException, InterruptedException, ParseException {
         AsyncHttpClient client = AsyncHttpClientFactory.create(new AsyncHttpClientFactory.AsyncHttpClientConfig());
@@ -116,22 +119,41 @@ public class Lab1Controller {
             return getTemperatureForLastDays(days);
         } catch (JSONException e) {
         }
-
         return emptyList();
     }
 
     public List<Double> getTemperatureForLastDays(int days) throws JSONException {
         List<Double> temps = new ArrayList<>();
 
+        // move the declaration of variables out of the loop
+        Long currentDayInSec = Calendar.getInstance().getTimeInMillis() / 1000;
+        Long oneDayInSec = 24 * 60 * 60L;
+
         for (int i = 0; i < days; i++) {
-            Long currentDayInSec = Calendar.getInstance().getTimeInMillis() / 1000;
-            Long oneDayInSec = 24 * 60 * 60L;
             Long curDateSec = currentDayInSec - i * oneDayInSec;
-            Double curTemp = getTemperatureFromInfo(curDateSec.toString());
+            Double curTemp = getCurrentTemperature(curDateSec.toString());
             temps.add(curTemp);
         }
-
         return temps;
+    }
+
+    public Double getCurrentTemperature(String date) throws JSONException {
+        // if cache contains temperature for current date, then get temperature from cache
+        if (temperatureCache.containsKey(date)){
+            return getTemperatureFromCache(date);
+        }
+        Double temp = getTemperatureFromInfo(date);
+        // save temperature in cache
+        putTemperatureInCache(date, temp);
+        return temp;
+    }
+
+    public Double getTemperatureFromCache(String date){
+        return temperatureCache.get(date);
+    }
+
+    public void putTemperatureInCache(String date, Double temp){
+        temperatureCache.put(date, temp);
     }
 
     public String getTodayWeather(String date) {
