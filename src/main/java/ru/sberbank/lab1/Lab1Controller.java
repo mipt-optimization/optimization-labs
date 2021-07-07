@@ -12,14 +12,14 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
 
+import javax.annotation.PreDestroy;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 
 import static java.util.Collections.emptyList;
@@ -110,8 +110,41 @@ public class Lab1Controller {
         return quotes;
     }
 
+    private void startup() {
+        try {
+            FileReader fileReader = new FileReader("cache.txt");
+            Scanner scanner = new Scanner(fileReader);
+            Integer i = 0;
+            while (scanner.hasNextLong()) {
+                System.out.println(i++);
+                temperatureCache.put(scanner.nextLong(), scanner.nextDouble());
+            }
+            fileReader.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @PreDestroy
+    public void destroy() { // Сохранение кэша в файл при остановке
+        try {
+            FileWriter fileWriter = new FileWriter("cache.txt");
+            for (Long dayNumber : temperatureCache.keySet()) {
+                fileWriter.write(dayNumber + " ");
+                fileWriter.write(temperatureCache.get(dayNumber) + "\n");
+            }
+            fileWriter.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+
     @GetMapping("/weather")
     public List<Double> getWeatherForPeriod(Integer days) {
+        if (temperatureCache.isEmpty()) {
+            startup(); // Загрузка кэша из файла
+        }
         try {
             return getTemperatureForLastDays(days);
         } catch (JSONException e) {
@@ -120,22 +153,30 @@ public class Lab1Controller {
         return emptyList();
     }
 
+    ConcurrentHashMap<Long, Double> temperatureCache = new ConcurrentHashMap<>();
+
     public List<Double> getTemperatureForLastDays(int days) throws JSONException {
         List<Double> temps = new ArrayList<>();
 
-        for (int i = 0; i < days; i++) {
-            Long currentDayInSec = Calendar.getInstance().getTimeInMillis() / 1000;
-            Long oneDayInSec = 24 * 60 * 60L;
-            Long curDateSec = currentDayInSec - i * oneDayInSec;
-            Double curTemp = getTemperatureFromInfo(curDateSec.toString());
-            temps.add(curTemp);
+        Long currentDay = Calendar.getInstance().getTimeInMillis() / 86_400_000L; // Объявление переменной вынес из цикла
+        Long oneDayInSec = 24 * 60 * 60L; // Объявление переменной вынес из цикла
+        for (int i = 0; i < days; ++i) {
+            if (temperatureCache.containsKey(currentDay)) {
+                temps.add(temperatureCache.get(currentDay)); // Сделал кэширование
+            } else {
+                Long currentDayInSec = currentDay * oneDayInSec;
+                Double curTemp = getTemperatureFromInfo(currentDayInSec.toString());
+                temps.add(curTemp);
+                temperatureCache.put(currentDay, curTemp);
+            }
+            --currentDay;
         }
-
         return temps;
     }
 
+
     public String getTodayWeather(String date) {
-        String obligatoryForecastStart = "https://api.darksky.net/forecast/ac1830efeff59c748d212052f27d49aa/";
+        String obligatoryForecastStart = "https://api.darksky.net/forecast/f92ee297dfdfd3a86f08a388f5ae83cc/";
         String LAcoordinates = "34.053044,-118.243750,";
         String exclude = "exclude=daily";
 
@@ -144,7 +185,7 @@ public class Lab1Controller {
         System.out.println(fooResourceUrl);
         ResponseEntity<String> response = restTemplate.getForEntity(fooResourceUrl, String.class);
         String info = response.getBody();
-        System.out.println(info);
+//        System.out.println(info);
         return info;
     }
 
