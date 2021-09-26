@@ -14,6 +14,10 @@ import org.springframework.web.client.RestTemplate;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
@@ -27,6 +31,16 @@ import static java.util.Collections.emptyList;
 @RestController
 @RequestMapping("/lab1")
 public class Lab1Controller {
+
+    private final Map<Long,Double> cache = new HashMap<>();
+    private final String obligatoryForecastStart = "https://api.darksky.net/forecast/ac1830efeff59c748d212052f27d49aa/";
+    private final String LAcoordinates = "34.053044,-118.243750,";
+    private final String exclude = "exclude=daily";
+    private final String hourly = "hourly";
+    private final String data = "data";
+    private final String temperature = "temperature";
+    private final long oneDayInSec = 24 * 60 * 60L;
+    private final String UsaLA = "America/Los_Angeles";
 
     private static final String URL = "http://export.rbc.ru/free/selt.0/free.fcgi?period=DAILY&tickers=USD000000TOD&separator=TAB&data_format=BROWSER";
 
@@ -111,56 +125,60 @@ public class Lab1Controller {
     }
 
     @GetMapping("/weather")
-    public List<Double> getWeatherForPeriod(Integer days) {
-        try {
-            return getTemperatureForLastDays(days);
-        } catch (JSONException e) {
-        }
+    public List<Double> getWeatherForPeriod(Integer days) throws JSONException {
+        return getTemperatureForLastDays(days);
+    }
 
-        return emptyList();
+    public long get7AMInLA () {
+        ZoneId zone = ZoneId.of(UsaLA);
+        LocalDateTime sevenAMInLA = LocalDate.now().atStartOfDay();
+        ZoneOffset zoneOffSet = zone.getRules().getOffset(sevenAMInLA);
+        return sevenAMInLA.toEpochSecond(zoneOffSet);
     }
 
     public List<Double> getTemperatureForLastDays(int days) throws JSONException {
         List<Double> temps = new ArrayList<>();
-
+        long timeInLA = get7AMInLA();
+        double curTemp;
         for (int i = 0; i < days; i++) {
-            Long currentDayInSec = Calendar.getInstance().getTimeInMillis() / 1000;
-            Long oneDayInSec = 24 * 60 * 60L;
-            Long curDateSec = currentDayInSec - i * oneDayInSec;
-            Double curTemp = getTemperatureFromInfo(curDateSec.toString());
-            temps.add(curTemp);
+            timeInLA -= i * oneDayInSec;
+            if (cache.containsKey(timeInLA)) {
+                temps.add(cache.get(timeInLA));
+            } else {
+                curTemp = getTemperatureFromInfo(Long.toString(timeInLA));
+                cache.put(timeInLA,curTemp);
+                temps.add(curTemp);
+            }
         }
 
         return temps;
     }
 
     public String getTodayWeather(String date) {
-        String obligatoryForecastStart = "https://api.darksky.net/forecast/ac1830efeff59c748d212052f27d49aa/";
-        String LAcoordinates = "34.053044,-118.243750,";
-        String exclude = "exclude=daily";
-
         RestTemplate restTemplate = new RestTemplate();
-        String fooResourceUrl = obligatoryForecastStart + LAcoordinates + date + "?" + exclude;
+        StringBuilder fooResourceUrl = new StringBuilder()
+                .append(obligatoryForecastStart)
+                .append(LAcoordinates)
+                .append(date)
+                .append("?")
+                .append(exclude);
         System.out.println(fooResourceUrl);
-        ResponseEntity<String> response = restTemplate.getForEntity(fooResourceUrl, String.class);
+        ResponseEntity<String> response = restTemplate.getForEntity(fooResourceUrl.toString(), String.class);
         String info = response.getBody();
         System.out.println(info);
         return info;
     }
 
     public Double getTemperatureFromInfo(String date) throws JSONException {
-        String info = getTodayWeather(date);
-        Double curTemp = getTemperature(info);
-        return curTemp;
+        return getTemperature(getTodayWeather(date));
     }
 
     public Double getTemperature(String info) throws JSONException {
-        JSONObject json = new JSONObject(info);
-        String hourly = json.getString("hourly");
-        JSONArray data = new JSONObject(hourly).getJSONArray("data");
-        Double temp = new JSONObject(data.get(0).toString()).getDouble("temperature");
-
-        return temp;
+        return new JSONObject(info)
+                .getJSONObject(hourly)
+                .getJSONArray(data)
+                .getJSONObject(0)
+                .getDouble(temperature);
     }
 }
 
