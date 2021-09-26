@@ -1,16 +1,10 @@
 package ru.mipt;
 
 import org.junit.Test;
-import org.mockito.Mockito;
 import ru.sberbank.lab1.Lab1Controller;
-import ru.sberbank.lab1.MyClass;
-
-import java.util.Arrays;
 import java.util.List;
-
-import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
-import static org.mockito.Mockito.mock;
+
 
 public class Lab1ControllerTest {
 
