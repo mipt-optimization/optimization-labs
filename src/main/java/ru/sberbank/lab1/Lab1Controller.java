@@ -2,7 +2,6 @@ package ru.sberbank.lab1;
 
 import org.asynchttpclient.AsyncHttpClient;
 import org.asynchttpclient.Response;
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.springframework.http.ResponseEntity;
@@ -30,9 +29,10 @@ public class Lab1Controller {
 
     private static final String URL = "http://export.rbc.ru/free/selt.0/free.fcgi?period=DAILY&tickers=USD000000TOD&separator=TAB&data_format=BROWSER";
     private static final long oneDayInSec = 24 * 60 * 60L;
-    public static final String API_URL = "https://api.darksky.net/forecast/7ba6164198e89cb2e6b2454d90e7b41d/";
-    public static final String COORDINATES = "34.053044,-118.243750,";
-    public static final String API_ARG = "?exclude=daily";
+    private static final String API_URL = "https://api.darksky.net/forecast/7ba6164198e89cb2e6b2454d90e7b41d/";
+    private static final String COORDINATES = "34.053044,-118.243750,";
+    private static final String API_ARG = "?exclude=daily";
+    private static final HashMap<Long, Double> weatherCache = new HashMap<>();
 
     @GetMapping("/quotes")
     public List<Quote> quotes(@RequestParam("days") int days) throws ExecutionException, InterruptedException, ParseException {
@@ -124,6 +124,7 @@ public class Lab1Controller {
         return emptyList();
     }
 
+    //Добавим кэш, в котором хранятся температуры для дат, для которых уже были вызовы
     //заменил Long на long для экономии памяти
     //Сделал oneDayInSec константой, чтобы каждый раз ее не пересчитывать
     //Вынес объявление currentDayInSec из цикла
@@ -132,8 +133,15 @@ public class Lab1Controller {
         long currentDayInSec = Calendar.getInstance().getTimeInMillis() / 1000;
         for (int i = 0; i < days; i++) {
             long curDateSec = currentDayInSec - i * oneDayInSec;
-            double curTemp = getTemperatureFromInfo(Long.toString(curDateSec));
-            temps.add(curTemp);
+            long curDay = curDateSec / oneDayInSec;
+            Double cachedValue = weatherCache.getOrDefault(curDay, null);
+            if (cachedValue == null) {
+                double curTemp = getTemperatureFromInfo(Long.toString(curDateSec));
+                weatherCache.putIfAbsent(curDay, curTemp);
+                temps.add(curTemp);
+            } else {
+                temps.add(cachedValue);
+            }
         }
 
         return temps;
