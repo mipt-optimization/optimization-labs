@@ -15,8 +15,8 @@ public class Lab1ControllerTest {
 
         List<Double> temperatures = controller.getWeatherForPeriod(days);
 
-        assertEquals(temperatures.get(0), (Double)62.0);
-        assertEquals(temperatures.get(1), (Double)64.05);
+        assertEquals(temperatures.get(0), (Double)60.85);
+        assertEquals(temperatures.get(1), (Double)62.0);
 
     }
 

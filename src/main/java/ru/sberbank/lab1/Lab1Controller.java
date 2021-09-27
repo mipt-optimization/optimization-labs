@@ -7,15 +7,18 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.List;
+import java.util.*;
 
 @RestController
 @RequestMapping("/lab1")
 public class Lab1Controller {
 
-
+    Map<Integer, Double> cache = new HashMap<>();
+    /* в этом файле я удалил все методы, кроме того, который надо было оптимизировать.
+    Также я удалил файлы Quote.java и AsyncHttpClientFactory.java, поскольку
+     они тоже не используются в вызове этого метода.
+     Для оптимизации я ввел кеш, который сохраняет результаты всех запросов,
+      при повторном запросе данные берутся из кеша. Скриншоты запусков находятся в папке src/main/resources*/
     @GetMapping("/weather")
     public List<Double> getWeatherForPeriod(Integer days) {
 
@@ -27,9 +30,16 @@ public class Lab1Controller {
         long oneDayInSec = 24 * 60 * 60L;
 
         for (int i = 0; i < days; i++) {
-            long currentDayInSec = Calendar.getInstance().getTimeInMillis() / 1000;
-            long currDateSeconds = currentDayInSec - i * oneDayInSec;
-            Double curTemp = getTemperatureFromService(Long.toString(currDateSeconds));
+            Double curTemp;
+            if(cache.containsKey(i)) {
+                curTemp = cache.get(i);
+            } else {
+                long currentDayInSec = Calendar.getInstance().getTimeInMillis() / 1000;
+                long currDateSeconds = currentDayInSec - i * oneDayInSec;
+                curTemp = getTemperatureFromService(Long.toString(currDateSeconds));
+                cache.put(i, curTemp);
+            }
+
             temps.add(curTemp);
         }
 
