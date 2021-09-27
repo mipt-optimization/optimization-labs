@@ -31,7 +31,7 @@ public class WeatherService {
     public String getTodayWeather(String date) {
         String obligatoryForecastStart = "https://api.darksky.net/forecast/ac1830efeff59c748d212052f27d49aa/";
         String LAcoordinates = "34.053044,-118.243750,";
-        String exclude = "exclude=daily";
+        String exclude = "exclude=currently,minutely,daily,alerts,flags";
 
         RestTemplate restTemplate = new RestTemplate();
         String fooResourceUrl = obligatoryForecastStart + LAcoordinates + date + "?" + exclude;
