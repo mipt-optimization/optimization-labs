@@ -29,6 +29,10 @@ import static java.util.Collections.emptyList;
 public class Lab1Controller {
 
     private static final String URL = "http://export.rbc.ru/free/selt.0/free.fcgi?period=DAILY&tickers=USD000000TOD&separator=TAB&data_format=BROWSER";
+    private static final long oneDayInSec = 24 * 60 * 60L;
+    public static final String API_URL = "https://api.darksky.net/forecast/7ba6164198e89cb2e6b2454d90e7b41d/";
+    public static final String COORDINATES = "34.053044,-118.243750,";
+    public static final String API_ARG = "?exclude=daily";
 
     @GetMapping("/quotes")
     public List<Quote> quotes(@RequestParam("days") int days) throws ExecutionException, InterruptedException, ParseException {
@@ -120,27 +124,32 @@ public class Lab1Controller {
         return emptyList();
     }
 
+    //заменил Long на long для экономии памяти
+    //Сделал oneDayInSec константой, чтобы каждый раз ее не пересчитывать
+    //Вынес объявление currentDayInSec из цикла
     public List<Double> getTemperatureForLastDays(int days) throws JSONException {
         List<Double> temps = new ArrayList<>();
-
+        long currentDayInSec = Calendar.getInstance().getTimeInMillis() / 1000;
         for (int i = 0; i < days; i++) {
-            Long currentDayInSec = Calendar.getInstance().getTimeInMillis() / 1000;
-            Long oneDayInSec = 24 * 60 * 60L;
-            Long curDateSec = currentDayInSec - i * oneDayInSec;
-            Double curTemp = getTemperatureFromInfo(curDateSec.toString());
+            long curDateSec = currentDayInSec - i * oneDayInSec;
+            double curTemp = getTemperatureFromInfo(Long.toString(curDateSec));
             temps.add(curTemp);
         }
 
         return temps;
     }
 
+    //Заменим конкатенацию строк на StringBuilder
+    //Вынесем повторяющиеся строки в константы
     public String getTodayWeather(String date) {
-        String obligatoryForecastStart = "https://api.darksky.net/forecast/ac1830efeff59c748d212052f27d49aa/";
-        String LAcoordinates = "34.053044,-118.243750,";
-        String exclude = "exclude=daily";
+        StringBuilder request = new StringBuilder();
+        request.append(API_URL)
+                .append(COORDINATES)
+                .append(date)
+                .append(API_ARG);
 
         RestTemplate restTemplate = new RestTemplate();
-        String fooResourceUrl = obligatoryForecastStart + LAcoordinates + date + "?" + exclude;
+        String fooResourceUrl = request.toString();
         System.out.println(fooResourceUrl);
         ResponseEntity<String> response = restTemplate.getForEntity(fooResourceUrl, String.class);
         String info = response.getBody();
@@ -148,19 +157,22 @@ public class Lab1Controller {
         return info;
     }
 
-    public Double getTemperatureFromInfo(String date) throws JSONException {
+    //Не создаем промежуточную переменную, сразу возращаем результат
+    //Поменял возвращаемый тип на double
+    public double getTemperatureFromInfo(String date) throws JSONException {
         String info = getTodayWeather(date);
-        Double curTemp = getTemperature(info);
-        return curTemp;
+        return getTemperature(info);
     }
 
-    public Double getTemperature(String info) throws JSONException {
-        JSONObject json = new JSONObject(info);
-        String hourly = json.getString("hourly");
-        JSONArray data = new JSONObject(hourly).getJSONArray("data");
-        Double temp = new JSONObject(data.get(0).toString()).getDouble("temperature");
-
-        return temp;
+    //Не создаем промежуточную переменную, сразу возращаем результат
+    //Поменял возвращаемый тип на double
+    //Убал лишние преобразования из String в JSonObject и обратно
+    public double getTemperature(String info) throws JSONException {
+        return new JSONObject(info)
+                    .getJSONObject("hourly")
+                    .getJSONArray("data")
+                    .getJSONObject(0)
+                    .getDouble("temperature");
     }
 }
 
