@@ -11,6 +11,12 @@ import org.springframework.web.client.RestTemplate;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.LongStream;
+import java.util.stream.Stream;
+
+import static java.util.stream.Collectors.toList;
 
 @Service
 public class WeatherService {
@@ -22,34 +28,33 @@ public class WeatherService {
     String uri;
 
     public List<Double> getTemperatureForLastDays(int days) throws JSONException {
-        List<Double> temps = new ArrayList<>();
+        long oneDayInSec = 24 * 60 * 60L;
+        long currentDayInSec = Calendar.getInstance().getTimeInMillis() / 1000;
+        return LongStream.range(0, days)
+                .parallel()
+                .map(day -> currentDayInSec - day * oneDayInSec)
+                .mapToObj(date -> getTemperatureFromInfo(Long.toString(date)))
+                .collect(toList());
+    }
 
-        for (int i = 0; i < days; i++) {
-            Long currentDayInSec = Calendar.getInstance().getTimeInMillis() / 1000;
-            Long oneDayInSec = 24 * 60 * 60L;
-            Long curDateSec = currentDayInSec - i * oneDayInSec;
-            Double curTemp = getTemperatureFromInfo(curDateSec.toString());
-            temps.add(curTemp);
-        }
-
-        return temps;
+    public Double getTemperatureFromInfo(String date) {
+        String info = getTodayWeather(date);
+        return getTemperature(info);
     }
 
     public String getTodayWeather(String date) {
         return template.getForEntity(uri, String.class, date).getBody();
     }
 
-    public Double getTemperatureFromInfo(String date) throws JSONException {
-        String info = getTodayWeather(date);
-        Double curTemp = getTemperature(info);
-        return curTemp;
-    }
-
-    public Double getTemperature(String info) throws JSONException {
-         return new JSONObject(info)
-                 .getJSONObject("hourly")
-                 .getJSONArray("data")
-                 .getJSONObject(0)
-                 .getDouble("temperature");
+    public Double getTemperature(String info) {
+        try {
+            return new JSONObject(info)
+                    .getJSONObject("hourly")
+                    .getJSONArray("data")
+                    .getJSONObject(0)
+                    .getDouble("temperature");
+        } catch (JSONException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
