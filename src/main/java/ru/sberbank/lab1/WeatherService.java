@@ -3,6 +3,7 @@ package ru.sberbank.lab1;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -13,6 +14,12 @@ import java.util.List;
 
 @Service
 public class WeatherService {
+
+    @Autowired
+    RestTemplate template;
+
+    @Autowired
+    String uri;
 
     public List<Double> getTemperatureForLastDays(int days) throws JSONException {
         List<Double> temps = new ArrayList<>();
@@ -29,17 +36,7 @@ public class WeatherService {
     }
 
     public String getTodayWeather(String date) {
-        String obligatoryForecastStart = "https://api.darksky.net/forecast/ac1830efeff59c748d212052f27d49aa/";
-        String LAcoordinates = "34.053044,-118.243750,";
-        String exclude = "exclude=currently,minutely,daily,alerts,flags";
-
-        RestTemplate restTemplate = new RestTemplate();
-        String fooResourceUrl = obligatoryForecastStart + LAcoordinates + date + "?" + exclude;
-        System.out.println(fooResourceUrl);
-        ResponseEntity<String> response = restTemplate.getForEntity(fooResourceUrl, String.class);
-        String info = response.getBody();
-        System.out.println(info);
-        return info;
+        return template.getForEntity(uri, String.class, date).getBody();
     }
 
     public Double getTemperatureFromInfo(String date) throws JSONException {
@@ -49,11 +46,10 @@ public class WeatherService {
     }
 
     public Double getTemperature(String info) throws JSONException {
-        JSONObject json = new JSONObject(info);
-        String hourly = json.getString("hourly");
-        JSONArray data = new JSONObject(hourly).getJSONArray("data");
-        Double temp = new JSONObject(data.get(0).toString()).getDouble("temperature");
-
-        return temp;
+         return new JSONObject(info)
+                 .getJSONObject("hourly")
+                 .getJSONArray("data")
+                 .getJSONObject(0)
+                 .getDouble("temperature");
     }
 }
