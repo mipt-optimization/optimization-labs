@@ -39,7 +39,7 @@ public class Lab1Controller {
         synchronized (temperatureCache) { temperatureFromCache = temperatureCache.getTemperature(days); }
         if (temperatureFromCache != null) return temperatureFromCache;
 
-        //TODO инициализацию времени вынес из цикла + получаем время начала дня, чтобы в кэше было меньше промахов
+        //TODO инициализацию времени вынес из цикла + получаем время начала дня
         long oneDayInSec = 24 * 60 * 60L;
         long currentDayInSec = LocalDate.now().toEpochDay() * oneDayInSec;
 
