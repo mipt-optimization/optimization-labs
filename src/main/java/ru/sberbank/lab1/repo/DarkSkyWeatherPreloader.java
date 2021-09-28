@@ -10,7 +10,6 @@ import ru.sberbank.lab1.WeatherRepository;
 import java.util.stream.IntStream;
 
 import static java.time.LocalDate.now;
-import static java.util.stream.Collectors.toList;
 
 @Service
 public class DarkSkyWeatherPreloader {
