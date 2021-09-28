@@ -2,15 +2,14 @@ package ru.sberbank;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.context.annotation.PropertySource;
-import ru.sberbank.lab1.Lab1Application;
+import org.springframework.cache.annotation.EnableCaching;
+import ru.sberbank.lab1.Lab1Controller;
 
 @SpringBootApplication
-@PropertySource("classpath:application.properties")
+@EnableCaching
 public class Optdemo1Application {
 
     public static void main(String[] args) {
-        SpringApplication.run(Lab1Application.class, args);
+        SpringApplication.run(Optdemo1Application.class, args);
     }
 }
