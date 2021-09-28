@@ -10,7 +10,7 @@ import ru.sberbank.lab1.WeatherRepository;
 import java.time.LocalDate;
 import java.util.function.Function;
 
-import static java.time.LocalTime.MIDNIGHT;
+import static java.time.LocalTime.NOON;
 import static java.time.ZoneOffset.UTC;
 
 @Component
@@ -22,7 +22,7 @@ public class DarkSkyCashedWeatherRepository implements WeatherRepository {
     @Override
     @Cacheable("temperature")
     public Double getTemperatureForDate(LocalDate date) {
-        Long epochSeconds = date.toEpochSecond(MIDNIGHT, UTC);
+        Long epochSeconds = date.toEpochSecond(NOON, UTC);
         String info = weatherProducer.apply(epochSeconds);
         return temperatureFromInfo(info);
     }
