@@ -14,12 +14,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 
 import static java.util.Collections.emptyList;
@@ -29,6 +24,13 @@ import static java.util.Collections.emptyList;
 public class Lab1Controller {
 
     private static final String URL = "http://export.rbc.ru/free/selt.0/free.fcgi?period=DAILY&tickers=USD000000TOD&separator=TAB&data_format=BROWSER";
+    //Выносим параметры ссылки в константы, чтобы один раз проинициализировать
+    public static final long ONE_DAY_IN_SEC = 24 * 60 * 60L;
+    public static final String OBLIGATORY_FORECAST_START = "https://api.darksky.net/forecast/ac1830efeff59c748d212052f27d49aa/";
+    public static final String LACOORDINATES = "34.053044,-118.243750,";
+    public static final String EXCLUDE_DAILY = "?exclude=daily";
+    //Кэшируем даты, для которых уже получали погоду
+    private final Map<Long, Double> cache = new LinkedHashMap<>();
 
     @GetMapping("/quotes")
     public List<Quote> quotes(@RequestParam("days") int days) throws ExecutionException, InterruptedException, ParseException {
@@ -109,9 +111,9 @@ public class Lab1Controller {
         }
         return quotes;
     }
-
+    //Можно оставить примитив, чтобы не было лишнего преобразования
     @GetMapping("/weather")
-    public List<Double> getWeatherForPeriod(Integer days) {
+    public List<Double> getWeatherForPeriod(int days) {
         try {
             return getTemperatureForLastDays(days);
         } catch (JSONException e) {
@@ -122,12 +124,12 @@ public class Lab1Controller {
 
     public List<Double> getTemperatureForLastDays(int days) throws JSONException {
         List<Double> temps = new ArrayList<>();
-
+        //Не заводим переменную по новой на каждой итерации
+        long currentDayInSec = Calendar.getInstance().getTimeInMillis() / 1000;
         for (int i = 0; i < days; i++) {
-            Long currentDayInSec = Calendar.getInstance().getTimeInMillis() / 1000;
-            Long oneDayInSec = 24 * 60 * 60L;
-            Long curDateSec = currentDayInSec - i * oneDayInSec;
-            Double curTemp = getTemperatureFromInfo(curDateSec.toString());
+            //Переделал в примитивы, вынес в константу число секунд
+            long curDateSec = currentDayInSec - i * ONE_DAY_IN_SEC;
+            double curTemp = getTemperature(curDateSec);
             temps.add(curTemp);
         }
 
@@ -135,32 +137,35 @@ public class Lab1Controller {
     }
 
     public String getTodayWeather(String date) {
-        String obligatoryForecastStart = "https://api.darksky.net/forecast/ac1830efeff59c748d212052f27d49aa/";
-        String LAcoordinates = "34.053044,-118.243750,";
-        String exclude = "exclude=daily";
-
         RestTemplate restTemplate = new RestTemplate();
-        String fooResourceUrl = obligatoryForecastStart + LAcoordinates + date + "?" + exclude;
+        //StringBuilder быстрее конкатенации строк
+        StringBuilder fooResourceUrl = new StringBuilder(OBLIGATORY_FORECAST_START)
+                .append(LACOORDINATES)
+                .append(date)
+                .append(EXCLUDE_DAILY);
         System.out.println(fooResourceUrl);
-        ResponseEntity<String> response = restTemplate.getForEntity(fooResourceUrl, String.class);
+        ResponseEntity<String> response = restTemplate.getForEntity(fooResourceUrl.toString(), String.class);
         String info = response.getBody();
         System.out.println(info);
         return info;
     }
 
-    public Double getTemperatureFromInfo(String date) throws JSONException {
-        String info = getTodayWeather(date);
-        Double curTemp = getTemperature(info);
-        return curTemp;
-    }
-
-    public Double getTemperature(String info) throws JSONException {
-        JSONObject json = new JSONObject(info);
-        String hourly = json.getString("hourly");
-        JSONArray data = new JSONObject(hourly).getJSONArray("data");
-        Double temp = new JSONObject(data.get(0).toString()).getDouble("temperature");
-
-        return temp;
+    public double getTemperature(long date) throws JSONException {
+        long day = date / ONE_DAY_IN_SEC;
+        if(cache.containsKey(day)) {
+            return cache.get(day);
+        }
+        String info = getTodayWeather(String.valueOf(date));
+        //Не создаём промежуточные объекты, получаем через поля
+        //Убрал лишний промежуточный метод с info
+        double temperature = new JSONObject(info)
+                .getJSONObject("hourly")
+                .getJSONArray("data")
+                .getJSONObject(0)
+                .getDouble("temperature");
+        //Кэшируем дни, в которые температура известна
+        cache.put(day, temperature);
+        return temperature;
     }
 }
 
