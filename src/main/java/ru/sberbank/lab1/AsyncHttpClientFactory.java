@@ -75,94 +75,8 @@ public class AsyncHttpClientFactory {
 			}
 		}
 
-		public int getConnectTimeout() {
-			return connectTimeout;
-		}
-
-		public AsyncHttpClientConfig setConnectTimeout(int connectTimeout) {
-			this.connectTimeout = connectTimeout;
-			return this;
-		}
-
-		public int getConnectionRequestTimeout() {
-			return connectionRequestTimeout;
-		}
-
-		public AsyncHttpClientConfig setConnectionRequestTimeout(int connectionRequestTimeout) {
-			this.connectionRequestTimeout = connectionRequestTimeout;
-			return this;
-		}
-
-		public int getSocketTimeout() {
-			return socketTimeout;
-		}
-
-		public AsyncHttpClientConfig setSocketTimeout(int socketTimeout) {
-			this.socketTimeout = socketTimeout;
-			return this;
-		}
-
-		public int getMaxConnections() {
-			return maxConnections;
-		}
-
-		public AsyncHttpClientConfig setMaxConnections(int maxConnections) {
-			this.maxConnections = maxConnections;
-			return this;
-		}
-
-		public int getMaxConnectionsPerRoute() {
-			return maxConnectionsPerRoute;
-		}
-
-		public AsyncHttpClientConfig setMaxConnectionsPerRoute(int maxConnectionsPerRoute) {
-			this.maxConnectionsPerRoute = maxConnectionsPerRoute;
-			return this;
-		}
-
-		public int getConnectionTtl() {
-			return connectionTtl;
-		}
-
-		public AsyncHttpClientConfig setConnectionTtl(int connectionTtl) {
-			this.connectionTtl = connectionTtl;
-			return this;
-		}
-
-		public int getRetry() {
-			return retry;
-		}
-
-		public AsyncHttpClientConfig setRetry(int retry) {
-			this.retry = retry;
-			return this;
-		}
-
 		public String getName() {
 			return name;
-		}
-
-		public AsyncHttpClientConfig setName(String name) {
-			this.name = name;
-			return this;
-		}
-
-		public HashedWheelTimerConfig getTimerConfig() {
-			return timerConfig;
-		}
-
-		public AsyncHttpClientConfig setTimerConfig(HashedWheelTimerConfig timerConfig) {
-			this.timerConfig = timerConfig;
-			return this;
-		}
-
-		public Timer getNettyTimer() {
-			return nettyTimer;
-		}
-
-		public AsyncHttpClientConfig setNettyTimer(Timer nettyTimer) {
-			this.nettyTimer = nettyTimer;
-			return this;
 		}
 	}
 
@@ -174,18 +88,8 @@ public class AsyncHttpClientFactory {
 			return tickDurationInMillis;
 		}
 
-		public HashedWheelTimerConfig setTickDurationInMillis(long tickDurationInMillis) {
-			this.tickDurationInMillis = tickDurationInMillis;
-			return this;
-		}
-
 		public int getTicksPerWheel() {
 			return ticksPerWheel;
-		}
-
-		public HashedWheelTimerConfig setTicksPerWheel(int ticksPerWheel) {
-			this.ticksPerWheel = ticksPerWheel;
-			return this;
 		}
 	}
 }
