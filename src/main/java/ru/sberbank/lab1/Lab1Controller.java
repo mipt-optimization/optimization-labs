@@ -2,15 +2,11 @@ package ru.sberbank.lab1;
 
 import org.asynchttpclient.AsyncHttpClient;
 import org.asynchttpclient.Response;
-import org.json.JSONArray;
 import org.json.JSONException;
-import org.json.JSONObject;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.client.RestTemplate;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -20,6 +16,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Collections;
 import java.util.concurrent.ExecutionException;
 
 import static java.util.Collections.emptyList;
@@ -29,6 +26,16 @@ import static java.util.Collections.emptyList;
 public class Lab1Controller {
 
     private static final String URL = "http://export.rbc.ru/free/selt.0/free.fcgi?period=DAILY&tickers=USD000000TOD&separator=TAB&data_format=BROWSER";
+
+    // это константа, давайте её и задавать как константу, а не вычислять каждый раз
+    // хотя по идее джава соптимизирует и в compile-time всё должна посчитать, но зачем на неё надеяться
+    private static final long ONE_DAY_IN_SEC = 24 * 60 * 60L;
+
+    private final CacheWeatherGetter weatherGetter;
+
+    public Lab1Controller() {
+        weatherGetter = new CacheWeatherGetter();
+    }
 
     @GetMapping("/quotes")
     public List<Quote> quotes(@RequestParam("days") int days) throws ExecutionException, InterruptedException, ParseException {
@@ -121,46 +128,87 @@ public class Lab1Controller {
     }
 
     public List<Double> getTemperatureForLastDays(int days) throws JSONException {
-        List<Double> temps = new ArrayList<>();
+        // Это ужасно, делать N запросов по сети последовательно друг за другом
+        // В идеале бы найти в API запрос, который бы за раз все данные вернул
+        // Но у них на сайте я нормального описания API не нашёл, поэтому давайте хотя бы
+        // запустим это дело в параллель
 
+        // сразу зададим capacity листу, мы ж его знаем
+        // ну и вообще хочу сразу массив из days элементов
+        List<Double> temps = new ArrayList<>(days);
         for (int i = 0; i < days; i++) {
-            Long currentDayInSec = Calendar.getInstance().getTimeInMillis() / 1000;
-            Long oneDayInSec = 24 * 60 * 60L;
-            Long curDateSec = currentDayInSec - i * oneDayInSec;
-            Double curTemp = getTemperatureFromInfo(curDateSec.toString());
-            temps.add(curTemp);
+            temps.add(0.);
+        }
+        // и хочу синхронизированный лист, чтобы ничего не сломалось
+        List<Double> syncTemps = Collections.synchronizedList(temps);
+
+        // Список тредов, чтоб их всех дождаться
+        List<Thread> threads = new ArrayList<>();
+
+        // и ещё список, чтоб узнать, кидал ли кто из потоков Exception
+        List<JSONException> exceptions = Collections.synchronizedList(new ArrayList<>());
+
+        // эту штуку можно за пределы цикла вынести, она +- одинаковая на каждой итерации
+        long currentDayInSec = Calendar.getInstance().getTimeInMillis() / 1000;
+
+        // находим значения
+        for (int i = 0; i < days; i++) {
+            long curDateSec = currentDayInSec - i * ONE_DAY_IN_SEC;
+            // если закешировано значение, то не будем создавать поток, а сразу положим его в список
+            if (weatherGetter.isCached(curDateSec)) {
+                syncTemps.set(i, weatherGetter.getTemperature(curDateSec));
+            }
+            // а в противном случае делаем поток
+            else {
+                Thread t = new TempGetterThread(i, syncTemps, exceptions, weatherGetter, curDateSec);
+                t.start();
+                threads.add(t);
+            }
+        }
+
+        // ждём пока все потоки всё сделают
+        for (Thread t : threads) {
+            try {
+                t.join();
+            } catch (InterruptedException e) {
+            }
+        }
+
+        // Кидаем exception если кто вдруг кинул
+        if (!exceptions.isEmpty()) {
+            throw exceptions.get(0);
         }
 
         return temps;
     }
 
-    public String getTodayWeather(String date) {
-        String obligatoryForecastStart = "https://api.darksky.net/forecast/ac1830efeff59c748d212052f27d49aa/";
-        String LAcoordinates = "34.053044,-118.243750,";
-        String exclude = "exclude=daily";
+    // Класс потока для нахождения температуры
+    private static class TempGetterThread extends Thread {
+        private final int index;
+        private final List<Double> results;
+        private final List<JSONException> excs;
+        private final CacheWeatherGetter weatherGetter;
+        private final long curDateSec;
 
-        RestTemplate restTemplate = new RestTemplate();
-        String fooResourceUrl = obligatoryForecastStart + LAcoordinates + date + "?" + exclude;
-        System.out.println(fooResourceUrl);
-        ResponseEntity<String> response = restTemplate.getForEntity(fooResourceUrl, String.class);
-        String info = response.getBody();
-        System.out.println(info);
-        return info;
+        public TempGetterThread(int index, List<Double> results, List<JSONException> excs, CacheWeatherGetter weatherGetter,
+                                long curDateSec) {
+            this.index = index;
+            this.results = results;
+            this.excs = excs;
+            this.weatherGetter = weatherGetter;
+            this.curDateSec = curDateSec;
+        }
+
+        @Override
+        public void run() {
+            try {
+                Double curTemp = weatherGetter.getTemperature(curDateSec);
+                results.set(index, curTemp);
+            } catch (JSONException e) {
+                excs.add(e);
+            }
+        }
     }
 
-    public Double getTemperatureFromInfo(String date) throws JSONException {
-        String info = getTodayWeather(date);
-        Double curTemp = getTemperature(info);
-        return curTemp;
-    }
-
-    public Double getTemperature(String info) throws JSONException {
-        JSONObject json = new JSONObject(info);
-        String hourly = json.getString("hourly");
-        JSONArray data = new JSONObject(hourly).getJSONArray("data");
-        Double temp = new JSONObject(data.get(0).toString()).getDouble("temperature");
-
-        return temp;
-    }
 }
 
