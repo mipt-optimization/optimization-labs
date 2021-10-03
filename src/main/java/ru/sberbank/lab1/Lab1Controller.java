@@ -28,11 +28,11 @@ import static java.util.Collections.emptyList;
 @RestController
 @RequestMapping("/lab1")
 public class Lab1Controller {
-    private final WebClient webClient;
+    private final DarkskyClient darkskyClient;
     private static final String URL = "http://export.rbc.ru/free/selt.0/free.fcgi?period=DAILY&tickers=USD000000TOD&separator=TAB&data_format=BROWSER";
 
-    public Lab1Controller(WebClient webClient) {
-        this.webClient = webClient;
+    public Lab1Controller(DarkskyClient darkskyClient) {
+        this.darkskyClient = darkskyClient;
     }
 
     @GetMapping("/quotes")
@@ -146,11 +146,7 @@ public class Lab1Controller {
 
         String fooResourceUrl = obligatoryForecastStart + LAcoordinates + date + "?" + exclude;
         System.out.println(fooResourceUrl);
-        String info = webClient.get()
-                .uri(fooResourceUrl)
-                .retrieve()
-                .bodyToMono(String.class)
-                .block();
+        String info = darkskyClient.get(fooResourceUrl).block();
         System.out.println(info);
         return info;
     }
