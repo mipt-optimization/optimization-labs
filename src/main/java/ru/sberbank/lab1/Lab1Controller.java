@@ -2,10 +2,6 @@ package ru.sberbank.lab1;
 
 import org.asynchttpclient.AsyncHttpClient;
 import org.asynchttpclient.Response;
-import org.json.JSONException;
-import org.json.JSONObject;
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -13,21 +9,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.time.LocalDate;
-import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 
-import static java.time.ZoneId.systemDefault;
-import static java.time.ZonedDateTime.now;
 import static java.util.Collections.emptyList;
-import static java.util.stream.Collectors.toUnmodifiableList;
-import static java.util.stream.IntStream.range;
 
 @RestController
 @RequestMapping("/lab1")
