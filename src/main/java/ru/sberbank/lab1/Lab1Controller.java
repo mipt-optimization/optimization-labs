@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.reactive.function.client.WebClient;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -27,8 +28,12 @@ import static java.util.Collections.emptyList;
 @RestController
 @RequestMapping("/lab1")
 public class Lab1Controller {
-
+    private final WebClient webClient;
     private static final String URL = "http://export.rbc.ru/free/selt.0/free.fcgi?period=DAILY&tickers=USD000000TOD&separator=TAB&data_format=BROWSER";
+
+    public Lab1Controller(WebClient webClient) {
+        this.webClient = webClient;
+    }
 
     @GetMapping("/quotes")
     public List<Quote> quotes(@RequestParam("days") int days) throws ExecutionException, InterruptedException, ParseException {
@@ -139,11 +144,13 @@ public class Lab1Controller {
         String LAcoordinates = "34.053044,-118.243750,";
         String exclude = "exclude=daily";
 
-        RestTemplate restTemplate = new RestTemplate();
         String fooResourceUrl = obligatoryForecastStart + LAcoordinates + date + "?" + exclude;
         System.out.println(fooResourceUrl);
-        ResponseEntity<String> response = restTemplate.getForEntity(fooResourceUrl, String.class);
-        String info = response.getBody();
+        String info = webClient.get()
+                .uri(fooResourceUrl)
+                .retrieve()
+                .bodyToMono(String.class)
+                .block();
         System.out.println(info);
         return info;
     }
