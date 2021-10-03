@@ -2,20 +2,18 @@ package ru.sberbank.lab1;
 
 import org.asynchttpclient.AsyncHttpClient;
 import org.asynchttpclient.Response;
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.springframework.http.ResponseEntity;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.client.RestTemplate;
-import org.springframework.web.reactive.function.client.WebClient;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -24,9 +22,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
+import static java.time.ZoneId.systemDefault;
 import static java.time.ZonedDateTime.now;
 import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.toUnmodifiableList;
@@ -35,10 +32,11 @@ import static java.util.stream.IntStream.range;
 @RestController
 @RequestMapping("/lab1")
 public class Lab1Controller {
-    private final DarkskyClient darkskyClient;
+    private final WeatherService weatherService;
     private static final String URL = "http://export.rbc.ru/free/selt.0/free.fcgi?period=DAILY&tickers=USD000000TOD&separator=TAB&data_format=BROWSER";
-    public Lab1Controller(DarkskyClient darkskyClient) {
-        this.darkskyClient = darkskyClient;
+
+    public Lab1Controller(WeatherService weatherService) {
+        this.weatherService = weatherService;
     }
 
     @GetMapping("/quotes")
@@ -124,43 +122,11 @@ public class Lab1Controller {
     @GetMapping("/weather")
     public List<Double> getWeatherForPeriod(Integer days) {
         try {
-            return getTemperatureForLastDays(days);
+            return weatherService.getTemperatureForLastDays(days);
         } catch (RuntimeException e) {
         }
 
         return emptyList();
-    }
-
-    public List<Double> getTemperatureForLastDays(int days) {
-        var currentDateTime = now();
-        return range(-days + 1, 1)
-                .mapToObj(currentDateTime::minusDays)
-                .map(ZonedDateTime::toEpochSecond)
-                .map(String::valueOf)
-                .map(this::getTemperatureFromInfo)
-                .collect(toUnmodifiableList());
-    }
-
-    public String getTodayWeather(String date) {
-        String info = darkskyClient.get(date).block();
-        System.out.println(info);
-        return info;
-    }
-
-    public Double getTemperatureFromInfo(String date) {
-        try {
-            return getTemperature(getTodayWeather(date));
-        } catch (JSONException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    public Double getTemperature(String info) throws JSONException {
-        return new JSONObject(info)
-                .getJSONObject("hourly")
-                .getJSONArray("data")
-                .getJSONObject(0)
-                .getDouble("temperature");
     }
 }
 
