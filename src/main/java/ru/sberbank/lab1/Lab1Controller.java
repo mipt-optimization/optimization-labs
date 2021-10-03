@@ -15,6 +15,8 @@ import org.springframework.web.reactive.function.client.WebClient;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
@@ -22,15 +24,19 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
+import static java.time.ZonedDateTime.now;
 import static java.util.Collections.emptyList;
+import static java.util.stream.Collectors.toUnmodifiableList;
+import static java.util.stream.IntStream.range;
 
 @RestController
 @RequestMapping("/lab1")
 public class Lab1Controller {
     private final DarkskyClient darkskyClient;
     private static final String URL = "http://export.rbc.ru/free/selt.0/free.fcgi?period=DAILY&tickers=USD000000TOD&separator=TAB&data_format=BROWSER";
-
     public Lab1Controller(DarkskyClient darkskyClient) {
         this.darkskyClient = darkskyClient;
     }
@@ -119,51 +125,42 @@ public class Lab1Controller {
     public List<Double> getWeatherForPeriod(Integer days) {
         try {
             return getTemperatureForLastDays(days);
-        } catch (JSONException e) {
+        } catch (RuntimeException e) {
         }
 
         return emptyList();
     }
 
-    public List<Double> getTemperatureForLastDays(int days) throws JSONException {
-        List<Double> temps = new ArrayList<>();
-
-        for (int i = 0; i < days; i++) {
-            Long currentDayInSec = Calendar.getInstance().getTimeInMillis() / 1000;
-            Long oneDayInSec = 24 * 60 * 60L;
-            Long curDateSec = currentDayInSec - i * oneDayInSec;
-            Double curTemp = getTemperatureFromInfo(curDateSec.toString());
-            temps.add(curTemp);
-        }
-
-        return temps;
+    public List<Double> getTemperatureForLastDays(int days) {
+        var currentDateTime = now();
+        return range(-days + 1, 1)
+                .mapToObj(currentDateTime::minusDays)
+                .map(ZonedDateTime::toEpochSecond)
+                .map(String::valueOf)
+                .map(this::getTemperatureFromInfo)
+                .collect(toUnmodifiableList());
     }
 
     public String getTodayWeather(String date) {
-        String obligatoryForecastStart = "https://api.darksky.net/forecast/ac1830efeff59c748d212052f27d49aa/";
-        String LAcoordinates = "34.053044,-118.243750,";
-        String exclude = "exclude=daily";
-
-        String fooResourceUrl = obligatoryForecastStart + LAcoordinates + date + "?" + exclude;
-        System.out.println(fooResourceUrl);
-        String info = darkskyClient.get(fooResourceUrl).block();
+        String info = darkskyClient.get(date).block();
         System.out.println(info);
         return info;
     }
 
-    public Double getTemperatureFromInfo(String date) throws JSONException {
-        String info = getTodayWeather(date);
-        Double curTemp = getTemperature(info);
-        return curTemp;
+    public Double getTemperatureFromInfo(String date) {
+        try {
+            return getTemperature(getTodayWeather(date));
+        } catch (JSONException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public Double getTemperature(String info) throws JSONException {
-        JSONObject json = new JSONObject(info);
-        String hourly = json.getString("hourly");
-        JSONArray data = new JSONObject(hourly).getJSONArray("data");
-        Double temp = new JSONObject(data.get(0).toString()).getDouble("temperature");
-
-        return temp;
+        return new JSONObject(info)
+                .getJSONObject("hourly")
+                .getJSONArray("data")
+                .getJSONObject(0)
+                .getDouble("temperature");
     }
 }
 
