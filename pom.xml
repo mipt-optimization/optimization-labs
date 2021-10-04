@@ -24,7 +24,7 @@
 		<java.version>1.8</java.version>
 		<uberjar.name>benchmarks</uberjar.name>
 	</properties>
-
+	
 	<dependencies>
 		<dependency>
 			<groupId>com.vaadin.external.google</groupId>
