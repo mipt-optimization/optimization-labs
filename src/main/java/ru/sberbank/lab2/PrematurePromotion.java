@@ -1,4 +1,4 @@
-package ru.sberbank.lab3;
+package ru.sberbank.lab2;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -8,16 +8,16 @@ public class PrematurePromotion {
     /**
      * Задание: запускать код этого класса со параметрами VM из каждого пункта, понадлюдать сколько было minor gc, сколько full на протяжении 15-30 секунд
      * и объяснить результаты.
-
-     1.  -verbose:gc -XX:MaxTenuringThreshold=1 -XX:-UseAdaptiveSizePolicy
-
-     2.  -verbose:gc -Xmx24m -XX:NewSize=16m -XX:MaxTenuringThreshold=1 -XX:-UseAdaptiveSizePolicy
-
-     3.  -verbose:gc -Xmx64m -XX:NewSize=32m -XX:MaxTenuringThreshold=1 -XX:-UseAdaptiveSizePolicy
-
-     4.  -Dmax.chunks=1000 -verbose:gc -Xmx24m -XX:NewSize=16m -XX:MaxTenuringThreshold=1 -XX:-UseAdaptiveSizePolicy
-
-     5.  -verbose:gc -Xmx64m -XX:NewSize=32m -XX:+NeverTenure -XX:-UseAdaptiveSizePolicy
+     * <p>
+     * 1.  -verbose:gc -XX:MaxTenuringThreshold=1 -XX:-UseAdaptiveSizePolicy
+     * <p>
+     * 2.  -verbose:gc -Xmx24m -XX:NewSize=16m -XX:MaxTenuringThreshold=1 -XX:-UseAdaptiveSizePolicy
+     * <p>
+     * 3.  -Xlog:gc=debug:file=gc.txt -Xmx64m -XX:NewSize=32m -XX:MaxTenuringThreshold=1 -XX:-UseAdaptiveSizePolicy
+     * <p>
+     * 4.  -Dmax.chunks=1000 -verbose:gc -Xmx24m -XX:NewSize=16m -XX:MaxTenuringThreshold=1 -XX:-UseAdaptiveSizePolicy
+     * <p>
+     * 5.  -verbose:gc -Xmx64m -XX:NewSize=32m -XX:+NeverTenure -XX:-UseAdaptiveSizePolicy
      */
 
     private static final int MAX_CHUNKS = Integer.getInteger("max.chunks", 10_000);
@@ -27,14 +27,14 @@ public class PrematurePromotion {
     private static void onNewChunk(byte[] bytes) {
         accumulatedChunks.add(bytes);
 
-        if(accumulatedChunks.size() > MAX_CHUNKS) {
+        if (accumulatedChunks.size() > MAX_CHUNKS) {
             processBatch(accumulatedChunks);
             accumulatedChunks.clear();
         }
     }
 
     public static void main(String[] args) {
-        while(true) {
+        while (true) {
             onNewChunk(produceChunk());
         }
     }
@@ -42,7 +42,7 @@ public class PrematurePromotion {
     private static byte[] produceChunk() {
         byte[] bytes = new byte[1024];
 
-        for(int i = 0; i < bytes.length; i ++) {
+        for (int i = 0; i < bytes.length; i++) {
             bytes[i] = (byte) (Math.random() * Byte.MAX_VALUE);
         }
 
@@ -54,8 +54,8 @@ public class PrematurePromotion {
     public static void processBatch(Collection<byte[]> bytes) {
         byte result = 0;
 
-        for(byte[] chunk : bytes) {
-            for(byte b : chunk) {
+        for (byte[] chunk : bytes) {
+            for (byte b : chunk) {
                 result ^= b;
             }
         }

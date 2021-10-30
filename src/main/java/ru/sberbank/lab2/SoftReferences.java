@@ -1,4 +1,4 @@
-package ru.sberbank.lab4;
+package ru.sberbank.lab2;
 
 import java.lang.ref.SoftReference;
 import java.util.Arrays;
@@ -7,7 +7,7 @@ public class SoftReferences {
 
     /**
      * Задание: запускать код этого класса со следующими параметрами VM, понадлюдать сколько было сборок на протяжении 15-30 секунд и объяснить результаты.
-     * Желательно использовать Java версии 8, если используется другая, то в каждом пункте, кроме пятого, нужно еще добавить параметр -XX:+UseConcMarkSweepGC
+     * Желательно использовать Java версии 8, если используется другая, то в каждом пункте, нужно еще добавить параметр -XX:+UseConcMarkSweepGC
      * <p>
      * 1.  -verbose:gc -Xmx24m -XX:NewSize=16m -XX:MaxTenuringThreshold=1 -XX:-UseAdaptiveSizePolicy
      * <p>
