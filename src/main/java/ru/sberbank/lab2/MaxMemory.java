@@ -1,9 +1,4 @@
-package ru.sberbank.lab3;
-
-import java.lang.management.ManagementFactory;
-import java.lang.management.MemoryMXBean;
-import java.lang.management.MemoryPoolMXBean;
-import java.util.function.Function;
+package ru.sberbank.lab2;
 
 public class MaxMemory {
 
