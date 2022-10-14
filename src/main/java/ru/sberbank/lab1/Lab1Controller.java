@@ -121,46 +121,66 @@ public class Lab1Controller {
     }
 
     public List<Double> getTemperatureForLastDays(int days) throws JSONException {
-        List<Double> temps = new ArrayList<>();
+        /*
+        здесь сделали
+        - определяем список с заданной емкостью, чтобы он не расширялся
+        - вынесли расчет константы oneDayInSec вне цикла, чтобы не считать одно и то же нескольк раз
+        - вынесли создание объекта вне цикла, чтобы они создавались один раз
+        - заменили умножение на сложение
+        - убрали создание лишних объектов, заинлайнив их
+         */
+
+        //заранее обозначаем емкость, чтобы лист не расширялся по мере добавления
+        List<Double> temps = new ArrayList<>(days);
+
+        //константы вычисляем один раз вне цикла
+        Long oneDayInSec = 24 * 60 * 60L;
+        //создаем объект один раз
+        Long curDateSec;
+        Long secDiff = 0L;
 
         for (int i = 0; i < days; i++) {
-            Long currentDayInSec = Calendar.getInstance().getTimeInMillis() / 1000;
-            Long oneDayInSec = 24 * 60 * 60L;
-            Long curDateSec = currentDayInSec - i * oneDayInSec;
-            Double curTemp = getTemperatureFromInfo(curDateSec.toString());
-            temps.add(curTemp);
+            //убрали лишний объект
+            curDateSec = Calendar.getInstance().getTimeInMillis() / 1000 - secDiff;
+            // заменяем умножение на сложение
+            secDiff += oneDayInSec;
+
+            //не создаем лишние объекты
+            temps.add(getTemperatureFromInfo(Long.toString(curDateSec)));
         }
 
         return temps;
     }
 
     public String getTodayWeather(String date) {
-        String obligatoryForecastStart = "https://api.darksky.net/forecast/ac1830efeff59c748d212052f27d49aa/";
-        String LAcoordinates = "34.053044,-118.243750,";
-        String exclude = "exclude=daily";
+        /*
+        здесь объединены строки, чтобы не делать каждый раз сложение, убрано создание лишних объектов и вывод принтов
+         */
+
+        //объединили строки (и новый токен)
+        String obligatoryForecastStart =
+                "https://api.darksky.net/forecast/7ba6164198e89cb2e6b2454d90e7b41d/34.053044,-118.243750,";
+        String exclude = "?exclude=daily";
 
         RestTemplate restTemplate = new RestTemplate();
-        String fooResourceUrl = obligatoryForecastStart + LAcoordinates + date + "?" + exclude;
-        System.out.println(fooResourceUrl);
-        ResponseEntity<String> response = restTemplate.getForEntity(fooResourceUrl, String.class);
-        String info = response.getBody();
-        System.out.println(info);
-        return info;
+
+        //не создаем лишний объект
+        return restTemplate.getForEntity(
+                obligatoryForecastStart + date + exclude, String.class).getBody();
     }
 
     public Double getTemperatureFromInfo(String date) throws JSONException {
-        String info = getTodayWeather(date);
-        Double curTemp = getTemperature(info);
-        return curTemp;
+        //не создаем лишние объекты
+        return getTemperature(getTodayWeather(date));
     }
 
     public Double getTemperature(String info) throws JSONException {
         JSONObject json = new JSONObject(info);
         String hourly = json.getString("hourly");
         JSONArray data = new JSONObject(hourly).getJSONArray("data");
-        Double temp = new JSONObject(data.get(0).toString()).getDouble("temperature");
 
-        return temp;
+        //не создаем лишний объект
+        return new JSONObject(data.get(0).toString()).getDouble("temperature");
     }
 }
 
