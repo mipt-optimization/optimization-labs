@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.LongStream;
 
 @RestController
@@ -119,7 +120,7 @@ public class Lab1Controller {
     }
 
     public List<String> getTemperatureForPeriod(int days) {
-        return LongStream.range(0, days)
+        return IntStream.range(0, days)
                 .parallel()
                 .mapToObj(day -> getTodayWeather(currentDayInSec - day * oneDayInSec))
                 .map(Mono::block)
