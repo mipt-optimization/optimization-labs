@@ -1,19 +1,18 @@
 package ru.sberbank.lab1;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.asynchttpclient.AsyncHttpClient;
 import org.asynchttpclient.Response;
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
@@ -21,14 +20,18 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
-
-import static java.util.Collections.emptyList;
+import java.util.stream.Collectors;
+import java.util.stream.LongStream;
 
 @RestController
 @RequestMapping("/lab1")
 public class Lab1Controller {
-
+    private static final long currentDayInSec = Instant.now().getEpochSecond();
+    private static final long oneDayInSec = 86_400L; // 24 * 60 * 60
     private static final String URL = "http://export.rbc.ru/free/selt.0/free.fcgi?period=DAILY&tickers=USD000000TOD&separator=TAB&data_format=BROWSER";
+    private static final String exclude = "?exclude=daily";
+
+    private final WebClient webClient = WebClient.create("https://api.darksky.net/forecast/6df573445c320d1634a227266d1360a3/34.053044,-118.243750,");
 
     @GetMapping("/quotes")
     public List<Quote> quotes(@RequestParam("days") int days) throws ExecutionException, InterruptedException, ParseException {
@@ -111,56 +114,24 @@ public class Lab1Controller {
     }
 
     @GetMapping("/weather")
-    public List<Double> getWeatherForPeriod(Integer days) {
-        try {
-            return getTemperatureForLastDays(days);
-        } catch (JSONException e) {
-        }
-
-        return emptyList();
+    public List<String> getWeatherForPeriod(int days) {
+        return getTemperatureForPeriod(days);
     }
 
-    public List<Double> getTemperatureForLastDays(int days) throws JSONException {
-        List<Double> temps = new ArrayList<>();
-
-        for (int i = 0; i < days; i++) {
-            Long currentDayInSec = Calendar.getInstance().getTimeInMillis() / 1000;
-            Long oneDayInSec = 24 * 60 * 60L;
-            Long curDateSec = currentDayInSec - i * oneDayInSec;
-            Double curTemp = getTemperatureFromInfo(curDateSec.toString());
-            temps.add(curTemp);
-        }
-
-        return temps;
+    public List<String> getTemperatureForPeriod(int days) {
+        return LongStream.range(0, days)
+                .parallel()
+                .mapToObj(day -> getTodayWeather(currentDayInSec - day * oneDayInSec))
+                .map(Mono::block)
+                .collect(Collectors.toList());
     }
 
-    public String getTodayWeather(String date) {
-        String obligatoryForecastStart = "https://api.darksky.net/forecast/ac1830efeff59c748d212052f27d49aa/";
-        String LAcoordinates = "34.053044,-118.243750,";
-        String exclude = "exclude=daily";
-
-        RestTemplate restTemplate = new RestTemplate();
-        String fooResourceUrl = obligatoryForecastStart + LAcoordinates + date + "?" + exclude;
-        System.out.println(fooResourceUrl);
-        ResponseEntity<String> response = restTemplate.getForEntity(fooResourceUrl, String.class);
-        String info = response.getBody();
-        System.out.println(info);
-        return info;
-    }
-
-    public Double getTemperatureFromInfo(String date) throws JSONException {
-        String info = getTodayWeather(date);
-        Double curTemp = getTemperature(info);
-        return curTemp;
-    }
-
-    public Double getTemperature(String info) throws JSONException {
-        JSONObject json = new JSONObject(info);
-        String hourly = json.getString("hourly");
-        JSONArray data = new JSONObject(hourly).getJSONArray("data");
-        Double temp = new JSONObject(data.get(0).toString()).getDouble("temperature");
-
-        return temp;
+    public Mono<String> getTodayWeather(long dateInSec) {
+        return webClient.get()
+                .uri(dateInSec + exclude)
+                .retrieve()
+                .bodyToMono(ObjectNode.class)
+                .map(node -> node.get("hourly").get("data").elements().next().get("temperature").asText())
+                .single();
     }
 }
-
