@@ -23,6 +23,7 @@
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 		<java.version>1.8</java.version>
 		<uberjar.name>benchmarks</uberjar.name>
+		<protobuf.version>3.21.12</protobuf.version>
 	</properties>
 
 	<dependencies>
@@ -66,6 +67,16 @@
 			<artifactId>jmh-generator-annprocess</artifactId>
 			<version>1.19</version>
 			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.google.protobuf</groupId>
+			<artifactId>protobuf-java</artifactId>
+			<version>${protobuf.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-databind</artifactId>
+			<version>2.14.0</version>
 		</dependency>
 	</dependencies>
 
