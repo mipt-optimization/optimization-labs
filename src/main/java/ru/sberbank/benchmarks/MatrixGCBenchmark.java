@@ -1,4 +1,4 @@
-package ru.sberbank.optdemo3;
+package ru.sberbank.benchmarks;
 
 import java.util.Random;
 import java.util.concurrent.TimeUnit;

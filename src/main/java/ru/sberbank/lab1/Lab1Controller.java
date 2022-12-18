@@ -1,15 +1,16 @@
 package ru.sberbank.lab1;
 
 import org.asynchttpclient.AsyncHttpClient;
-import org.asynchttpclient.Request;
-import org.asynchttpclient.RequestBuilder;
 import org.asynchttpclient.Response;
-import org.asynchttpclient.util.HttpConstants;
+import org.json.JSONArray;
 import org.json.JSONException;
+import org.json.JSONObject;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.client.RestTemplate;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -20,7 +21,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 
 import static java.util.Collections.emptyList;
 
@@ -110,61 +110,57 @@ public class Lab1Controller {
         return quotes;
     }
 
-    // (1) Самая жираня оптимизация, параллелим запросы (2s -> 640ms)
-    private final AsyncHttpClient client = AsyncHttpClientFactory.create(new AsyncHttpClientFactory.AsyncHttpClientConfig());
-
     @GetMapping("/weather")
     public List<Double> getWeatherForPeriod(Integer days) {
         try {
             return getTemperatureForLastDays(days);
         } catch (JSONException e) {
-        } catch (ExecutionException e) {
-            throw new RuntimeException(e);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
         }
 
         return emptyList();
     }
 
-    public List<Double> getTemperatureForLastDays(int days) throws JSONException, ExecutionException, InterruptedException {
+    public List<Double> getTemperatureForLastDays(int days) throws JSONException {
         List<Double> temps = new ArrayList<>();
-        List<Future<Response>> tasks = new ArrayList<>();
-        // (2) Создаем тежелый объект много раз, пусть тут живет (640ms -> 260ms)
-        Long currentDayInSec = Calendar.getInstance().getTimeInMillis() / 1000;
-        Long oneDayInSec = 24 * 60 * 60L;
 
         for (int i = 0; i < days; i++) {
+            Long currentDayInSec = Calendar.getInstance().getTimeInMillis() / 1000;
+            Long oneDayInSec = 24 * 60 * 60L;
             Long curDateSec = currentDayInSec - i * oneDayInSec;
-            tasks.add(getTodayWeather(curDateSec.toString(), client));
-        }
-
-        for (int i = 0; i < days; i++) {
-            Double curTemp = getTemperature(tasks.get(i).get().getResponseBody());
+            Double curTemp = getTemperatureFromInfo(curDateSec.toString());
             temps.add(curTemp);
         }
 
         return temps;
     }
 
-    public Future<Response> getTodayWeather(String date, AsyncHttpClient client) {
-        String obligatoryForecastStart = "https://api.darksky.net/forecast/3ce5ca6c6c64befaa69dd9cf05b939db/";
+    public String getTodayWeather(String date) {
+        String obligatoryForecastStart = "https://api.darksky.net/forecast/ac1830efeff59c748d212052f27d49aa/";
         String LAcoordinates = "34.053044,-118.243750,";
         String exclude = "exclude=daily";
-        // Тут наверно оптимизатор справится с созданием одной большой строки
+
+        RestTemplate restTemplate = new RestTemplate();
         String fooResourceUrl = obligatoryForecastStart + LAcoordinates + date + "?" + exclude;
-        Request getRequest = new RequestBuilder(HttpConstants.Methods.GET)
-                .setUrl(fooResourceUrl)
-                .build();
-        return client.executeRequest(getRequest);
+        System.out.println(fooResourceUrl);
+        ResponseEntity<String> response = restTemplate.getForEntity(fooResourceUrl, String.class);
+        String info = response.getBody();
+        System.out.println(info);
+        return info;
     }
 
-    public Double getTemperature(String info) {
-        // (3) Нам от джсона надо всего 5 байт, а парсили весь объект большой, говнокод, но цель сейчас оптимизациия (260ms -> 240ms)
-        String anchor = "\"temperature\":";
-        int doubleStart = info.indexOf(anchor, info.indexOf(anchor) + 1) + anchor.length();
-        int doubleEnd = info.indexOf(",", doubleStart);
-        return Double.parseDouble(info.substring(doubleStart, doubleEnd));
+    public Double getTemperatureFromInfo(String date) throws JSONException {
+        String info = getTodayWeather(date);
+        Double curTemp = getTemperature(info);
+        return curTemp;
+    }
+
+    public Double getTemperature(String info) throws JSONException {
+        JSONObject json = new JSONObject(info);
+        String hourly = json.getString("hourly");
+        JSONArray data = new JSONObject(hourly).getJSONArray("data");
+        Double temp = new JSONObject(data.get(0).toString()).getDouble("temperature");
+
+        return temp;
     }
 }
 
