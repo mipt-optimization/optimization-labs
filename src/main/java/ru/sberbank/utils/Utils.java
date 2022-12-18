@@ -1,4 +1,4 @@
-package ru.sberbank.utils;
+package ru.sberbank;
 
 import java.util.Collection;
 import java.util.LinkedHashMap;

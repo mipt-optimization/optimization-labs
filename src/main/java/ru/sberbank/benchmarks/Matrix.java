@@ -1,7 +1,5 @@
 package ru.sberbank.optdemo3;
 
-import ru.sberbank.optdemo3.DoubleRow;
-
 public class Matrix {
 	final DoubleRow[] rows;
 	final int nRows, nColumns;
