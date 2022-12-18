@@ -1,4 +1,4 @@
-package ru.sberbank.benchmarks;
+package ru.sberbank.optdemo3;
 
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;

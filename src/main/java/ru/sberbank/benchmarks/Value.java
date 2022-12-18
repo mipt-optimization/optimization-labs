@@ -1,4 +1,4 @@
-package ru.sberbank.benchmarks;
+package ru.sberbank.optdemo3;
 
 public class Value {
 
