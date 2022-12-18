@@ -1,4 +1,4 @@
-package ru.sberbank.lab3;
+package ru.sberbank.lab4;
 
 public class SecondTask {
     public static void main(String[] args) {//1. Что может сделать JIT-компилятор в этом методе?

@@ -1,4 +1,4 @@
-package ru.sberbank.lab3;
+package ru.sberbank.lab4;
 
 import java.util.Random;
 

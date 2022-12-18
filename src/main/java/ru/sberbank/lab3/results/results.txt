@@ -1,0 +1,12 @@
+Benchmark                                Mode  Cnt    Score    Error  Units
+TestSerializers.testDeserializeJSON      avgt   10  858,375 ± 53,084  ns/op
+TestSerializers.testDeserializeProtobuf  avgt   10  352,314 ± 15,356  ns/op
+TestSerializers.testSerializeJSON        avgt   10  455,636 ±  9,709  ns/op
+TestSerializers.testSerializeProtobuf    avgt   10    2,180 ±  0,047  ns/op
+
+Выводы:
+- Самая большая ошибка при десериализации и сериализации у json
+- Самая быстрая сериализация у Protobuf
+- Самая быстрая десериализация у Protobuf
+
+Также после сериализации объект Protobuf занимает меньше места, чем JSON. Однако JSON более человеко-читаем.
