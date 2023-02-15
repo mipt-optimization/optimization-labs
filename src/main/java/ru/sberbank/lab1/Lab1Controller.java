@@ -14,13 +14,12 @@ import org.springframework.web.client.RestTemplate;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.stream.Collectors;
 
 import static java.util.Collections.emptyList;
 
@@ -121,46 +120,53 @@ public class Lab1Controller {
     }
 
     public List<Double> getTemperatureForLastDays(int days) throws JSONException {
-        List<Double> temps = new ArrayList<>();
-
-        for (int i = 0; i < days; i++) {
-            Long currentDayInSec = Calendar.getInstance().getTimeInMillis() / 1000;
-            Long oneDayInSec = 24 * 60 * 60L;
-            Long curDateSec = currentDayInSec - i * oneDayInSec;
-            Double curTemp = getTemperatureFromInfo(curDateSec.toString());
-            temps.add(curTemp);
+        List<Future<Double>> futures = new ArrayList<>(days);
+        for (int i = 0; i < days; ++i) {
+            long curTimeSeconds = Calendar.getInstance().getTimeInMillis() / 1000;
+            long targetTimeSeconds = curTimeSeconds - SECONDS_PER_DAY * i;
+            String targetDateString = Long.toString(targetTimeSeconds);
+            futures.add(getWeatherForDateAsync(targetDateString));
         }
-
-        return temps;
+        return futures.stream().map(future -> {
+            try {
+                return future.get();
+            } catch (InterruptedException | ExecutionException e) {
+                System.out.println(e.toString());
+                return null;
+            }
+        }).collect(Collectors.toList());
     }
 
-    public String getTodayWeather(String date) {
-        String obligatoryForecastStart = "https://api.darksky.net/forecast/ac1830efeff59c748d212052f27d49aa/";
-        String LAcoordinates = "34.053044,-118.243750,";
-        String exclude = "exclude=daily";
-
-        RestTemplate restTemplate = new RestTemplate();
-        String fooResourceUrl = obligatoryForecastStart + LAcoordinates + date + "?" + exclude;
-        System.out.println(fooResourceUrl);
-        ResponseEntity<String> response = restTemplate.getForEntity(fooResourceUrl, String.class);
-        String info = response.getBody();
-        System.out.println(info);
-        return info;
+    public Future<Double> getWeatherForDateAsync(String date) {
+        String url = getWeatherRequestUrl(date);
+        // 1. a straightforward parallelization
+        return weatherExecutor.submit(() -> {
+            // 2. instantiating a separate RestTemplate for every request is inefficient, let's use a single one;
+            //    it's thread-safe
+            ResponseEntity<String> response = weatherRestTemplate.getForEntity(url, String.class);
+            String info = response.getBody();
+            return getTemperatureFromInfo(info);
+        });
     }
 
-    public Double getTemperatureFromInfo(String date) throws JSONException {
-        String info = getTodayWeather(date);
-        Double curTemp = getTemperature(info);
-        return curTemp;
-    }
-
-    public Double getTemperature(String info) throws JSONException {
+    public Double getTemperatureFromInfo(String info) throws JSONException {
         JSONObject json = new JSONObject(info);
         String hourly = json.getString("hourly");
         JSONArray data = new JSONObject(hourly).getJSONArray("data");
-        Double temp = new JSONObject(data.get(0).toString()).getDouble("temperature");
 
-        return temp;
+        return new JSONObject(data.get(0).toString()).getDouble("temperature");
     }
+
+    private static String getWeatherRequestUrl(String date) {
+        return WEATHER_BASE_URL + "/" + TOKEN + "/" + LA_COORDINATES + "," + date + "?" + String.join("&", PARAMS);
+    }
+
+    private static final String WEATHER_BASE_URL = "https://api.darksky.net/forecast";
+    private static final String TOKEN = "ac1830efeff59c748d212052f27d49aa";
+    private static final String LA_COORDINATES = "34.053044,-118.243750";
+    private static final List<String> PARAMS = Collections.singletonList("exclude=daily");
+    private static final long SECONDS_PER_DAY = 24L * 60 * 60;
+    private static final ExecutorService weatherExecutor = Executors.newFixedThreadPool(4);
+    private static final RestTemplate weatherRestTemplate = new RestTemplate();
 }
 
